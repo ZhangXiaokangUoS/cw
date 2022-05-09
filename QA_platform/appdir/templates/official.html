@@ -14,24 +14,19 @@
         }
 
     </style>
-    <script>
-        $(document).ready(function () {
-            $('.nav-item').removeClass('active');
-            $('#question-a').addClass('active');
-        })
-    </script>
+
 
     <div class="card text-center">
         <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('questions',type='official') }}">Official</a>
+                    <a class="nav-link active" href="{{ url_for('questions',type='official') }}">Official</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('questions',type='hot') }}">Hot</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="{{ url_for('questions',type='new') }}">New</a>
+                    <a class="nav-link" href="{{ url_for('questions',type='new') }}">New</a>
                 </li>
                 <li class="nav-item">
                     {% if username %}
@@ -43,8 +38,8 @@
             </ul>
         </div>
         <div class="card-body">
-            <h5 class="card-title">New questions</h5>
-            <p class="card-text">These are the latest questions at the moment.</p>
+            <h5 class="card-title">Hot questions</h5>
+            <p class="card-text">These are the hottest questions at the moment.</p>
             {% for question in questions %}
                 <div class="card text-left">
                     <h5 class="card-header">
@@ -64,6 +59,7 @@
                                 <a href="/login" class="btn btn-outline-primary">View answers</a>
                             {% endif %}
                             <span class="card-text info text-muted">{{ question.answers }} Answers</span>
+
                         </div>
                     </div>
                 </div>

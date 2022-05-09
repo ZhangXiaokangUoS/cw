@@ -15,13 +15,17 @@ class LoginForm(FlaskForm):
 class RegisterForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()],
                            render_kw={'class': 'form-control'})
-    email = StringField('Email',
-                        validators=[DataRequired(), Regexp('^([a-zA-Z]|[0-9])(\w|\-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$')],
-                        render_kw={'placeholder': 'email@example.com', 'class': 'form-control'})
+    email = StringField(
+        'Email',
+        # validators=[DataRequired(), Regexp('^([a-zA-Z]|[0-9])(\w|\-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$')],
+        validators=[DataRequired(), Regexp("^([a-zA-Z]|[0-9])+@soton\.ac\.uk$")],
+        render_kw={'placeholder': 'email@soton.ac.uk', 'class': 'form-control'}
+    )
     password = PasswordField('Password', validators=[DataRequired()],
                              render_kw={'class': 'form-control'})
     repassword = PasswordField('Repeat Password', validators=[DataRequired()],
                                render_kw={'class': 'form-control'})
+    invitation_code = PasswordField('Invitation Code', validators=[DataRequired()], render_kw={'class': 'form-control'})
     submit = SubmitField('Register', render_kw={'class': 'btn btn-outline-primary', 'id': 'submit'})
 
 

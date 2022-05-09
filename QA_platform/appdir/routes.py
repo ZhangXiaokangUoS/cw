@@ -2,8 +2,9 @@ from flask import render_template, flash, redirect, url_for, session, request, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from appdir import app, db
 from appdir.forms import RegisterForm, LoginForm, QuestionForm, AnswerForm
-from appdir.models import User, Question, Answer, Viewpoint, Comment, Follow, Invite
+from appdir.models import User, Question, Answer, Viewpoint, Comment, Follow, Invite, InvitationCode
 from datetime import datetime
+from appdir.mail import send_mail, RegisterSuccessMail
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -22,6 +23,21 @@ def validate_question(question_form):
     db.session.commit()
     flash('You have posted your question successfully!', 'success')
     return redirect(url_for('questions', type='new'))
+
+
+@app.route("/activate/<user_name>", methods=["GET"])
+def activate(user_name):
+    user = User.query.filter(User.username == user_name).first()
+    if not user:
+        return jsonify({
+            "error_code": -1,
+            "info": "The link is invalid"
+        })
+    user.status = 0
+    db.session.add(user)
+    db.session.commit()
+    flash("Activate successfully!", "success")
+    return redirect(url_for('login'))
 
 
 @app.route('/index', methods=['GET', 'POST'])
@@ -259,7 +275,12 @@ def questions(type):
             my_questions.append(new_question)
     if question_form.validate_on_submit():
         return validate_question(question_form)
-    if type == 'hot':
+    if type == "official":
+        my_questions = sorted(my_questions, key=lambda keys: keys['answers'])
+        my_questions.reverse()
+        return render_template('official.html', username=session.get('USERNAME'), question_form=question_form,
+                               questions=my_questions)
+    if type in ["official", "hot"]:
         my_questions = sorted(my_questions, key=lambda keys: keys['answers'])
         my_questions.reverse()
         return render_template('hot.html', username=session.get('USERNAME'), question_form=question_form,
@@ -335,7 +356,6 @@ def follow():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    question_form = QuestionForm()
     register_form = RegisterForm()
     if register_form.validate_on_submit():
         return validate_register(register_form)
@@ -352,17 +372,38 @@ def validate_register(form):
     if User.query.filter(User.email == form.email.data).first():
         flash('The email has been used by other users!', 'error')
         return redirect(url_for('register'))
+    if not InvitationCode.query.filter(InvitationCode.invitation_code == form.invitation_code.data).filter(
+        InvitationCode.is_valid == 1
+    ).first():
+        flash("The invitation code is invalid!", "error")
+        return redirect(url_for('register'))
     password_hash = generate_password_hash(form.password.data)
-    user = User(username=form.username.data, email=form.email.data, password_hash=form.password.data)
+    to_user = form.email.data
+    user_name = form.username.data
+    register_success_mail = str(RegisterSuccessMail(
+        to_user=str(form.email.data),
+        user_name=str(form.username.data)
+    ))
+    if send_mail(form.email.data, register_success_mail) == -1:
+        flash("Something went wrong with the service. Please register later", "error")
+        return redirect(url_for('register'))
+    user = User(
+        username=form.username.data,
+        email=form.email.data,
+        original_password=form.password.data,
+        password_hash=password_hash,
+        invitation_code=form.invitation_code.data,
+        status=1
+    )
     db.session.add(user)
     db.session.commit()
-    flash('User registered with username: {}'.format(form.username.data), 'success')
+    flash("User registered with username: {}. Please check your mail and activate your account"
+          .format(form.username.data), "success")
     return redirect(url_for('login'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    question_form = QuestionForm()
     login_form = LoginForm()
     if login_form.validate_on_submit():
         return validate_login(login_form)
@@ -374,8 +415,10 @@ def validate_login(form):
     if not user_in_db:
         flash('No user found with username: {}'.format(form.username.data), 'error')
         return redirect(url_for('login'))
-    # if check_password_hash(user_in_db.password_hash, form.password.data):
-    if user_in_db.password_hash == form.password.data:
+    if user_in_db.status == 1:
+        flash("Your account is not activated, please check your registration email to activate your account.")
+        return redirect(url_for('login'))
+    if check_password_hash(user_in_db.password_hash, form.password.data):
         flash('Login successfully!', 'success')
         session["USERNAME"] = user_in_db.username
         session["USERID"] = user_in_db.id

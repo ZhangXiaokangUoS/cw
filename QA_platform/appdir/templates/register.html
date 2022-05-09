@@ -104,9 +104,32 @@
                         </div>
                     </div>
                 </div>
+                <div class="form-row">
+                        <div class="col-md-12 mb-3">
+                            <label>Invitation Code</label>
+                            {% if form.errors %}
+                                {% if form.invitation_code.errors %}
+                                    {{ form.invitation_code(class="form-control is-invalid") }}
+                                {% else %}
+                                    {{ form.invitation_code(class="form-control is-valid") }}
+                                {% endif %}
+                            {% else %}
+                                {{ form.invitation_code }}
+                            {% endif %}
+                            <div class="valid-feedback">
+                                Looks good!
+                            </div>
+                            <div class="invalid-feedback">
+                                {% for error in form.invitation_code.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 <div class="form-row text-center">
                     {{ form.submit }}
                 </div>
+
             </form>
         </div>
     </div>
