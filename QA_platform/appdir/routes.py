@@ -17,8 +17,13 @@ def root():
 
 def validate_question(question_form):
     now_time = datetime.now()
-    new_question = Question(title=question_form.title.data, description=question_form.description.data,
-                            user_id=session.get('USERID'), datetime=now_time)
+    new_question = Question(
+        title=question_form.title.data,
+        description=question_form.description.data,
+        user_id=session.get('USERID'),
+        type=0,
+        status=0,
+        datetime=now_time)
     db.session.add(new_question)
     db.session.commit()
     flash('You have posted your question successfully!', 'success')
@@ -67,9 +72,16 @@ def question(question_id):
         answer_ids.append(answer.id)
     answers = get_answers(answer_ids=answer_ids)
 
-    return render_template('question.html', username=session.get('USERNAME'), question_form=question_form,
-                           question=current_question, answer_form=answer_form, answers=answers,
-                           user_id=session.get('USERID'), users=users_in_db)
+    return render_template(
+        'question.html',
+        username=session.get('USERNAME'),
+        question_form=question_form,
+        question=current_question,
+        answer_form=answer_form,
+        answers=answers,
+        user_id=session.get('USERID'),
+        users=users_in_db
+    )
 
 
 @app.route('/favorites')
@@ -77,7 +89,7 @@ def favorites():
     question_form = QuestionForm()
     if question_form.validate_on_submit():
         return validate_question(question_form)
-    viewpoints_in_db = Viewpoint.query.filter(Viewpoint.like == True, Viewpoint.user_id == session.get('USERID'))
+    viewpoints_in_db = Viewpoint.query.filter(Viewpoint.like is True, Viewpoint.user_id == session.get('USERID'))
     answer_ids = []
     for viewpoint in viewpoints_in_db:
         answer_ids.append(viewpoint.answer_id)
@@ -258,6 +270,8 @@ def questions(type):
     questions_in_db = Question.query.all()
     my_questions = []
     for question in questions_in_db:
+        if question.status != 0:
+            continue
         user = User.query.filter(User.id == question.user_id).first()
         answers_in_db = Answer.query.filter(Answer.question_id == question.id)
         new_question = {
@@ -266,7 +280,8 @@ def questions(type):
             'title': question.title,
             'description': question.description,
             'answers': answers_in_db.count(),
-            'time': question.datetime.strftime("%Y-%m-%d %H:%M:%S")
+            'time': question.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+            "type": question.type
         }
         if type == 'invitation':
             if question.id in invite_question_ids:
@@ -276,11 +291,12 @@ def questions(type):
     if question_form.validate_on_submit():
         return validate_question(question_form)
     if type == "official":
+        my_questions = [q for q in my_questions if q["type"] == 1]
         my_questions = sorted(my_questions, key=lambda keys: keys['answers'])
         my_questions.reverse()
         return render_template('official.html', username=session.get('USERNAME'), question_form=question_form,
                                questions=my_questions)
-    if type in ["official", "hot"]:
+    if type in ["hot"]:
         my_questions = sorted(my_questions, key=lambda keys: keys['answers'])
         my_questions.reverse()
         return render_template('hot.html', username=session.get('USERNAME'), question_form=question_form,
@@ -299,8 +315,7 @@ def questions(type):
 @app.route("/search", methods=["GET", "POST"])
 def search():
     search_question = request.args.get("question", "").lower()
-    questions_in_db = Question.query.all()
-    my_questions = []
+    questions_in_db = Question.query.filter(Question.status == 0)
     hit_questions = []
     search_question_list = search_question.split()
     for question in questions_in_db:
@@ -316,13 +331,10 @@ def search():
         }
         description_l = question.description.lower().split()
         title_l = question.title.lower().split()
-
         for word in search_question_list:
             if word in description_l or word in title_l:
                 hit_questions.append(new_question)
                 break
-        # my_questions.append(new_question)
-    # return jsonify(hit_questions)
     question_form = QuestionForm()
     return render_template(
         'search.html',

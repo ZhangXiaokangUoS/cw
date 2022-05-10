@@ -25,6 +25,8 @@ class Question(db.Model):
     description = db.Column(db.String(300), index=True)
     datetime = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    type = db.Column(db.Integer)
+    status = db.Column(db.Integer)
 
     def __repr__(self):
         return '<Question {}>'.format(self.title)
